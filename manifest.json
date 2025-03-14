@@ -1,0 +1,36 @@
+{
+    "manifest_version": 3,
+    "name": "OpenAI Coding Assistant",
+    "version": "1.0",
+    "description": "A minimal Chrome extension for using OpenAI's API for coding assistance",
+    "permissions": ["storage", "sidePanel", "scripting"],
+    "action": {
+      "default_popup": "popup.html",
+      "default_icon": {
+        "16": "icons/icon16.png",
+        "48": "icons/icon48.png",
+        "128": "icons/icon128.png"
+      }
+    },
+    "icons": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    },
+    "side_panel": {
+      "default_path": "sidebar.html"
+    },
+    "background": {
+      "service_worker": "background.js"
+    },
+    "host_permissions": ["https://api.openai.com/*"],
+    "commands": {
+      "_execute_action": {
+        "suggested_key": {
+          "default": "Ctrl+Shift+O",
+          "mac": "Command+Shift+O"
+        },
+        "description": "Open OpenAI Coding Assistant"
+      }
+    }
+  }

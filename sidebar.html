@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OpenAI Coding Assistant</title>
+  <link rel="stylesheet" href="sidebar.css">
+  <!-- Use local libraries instead of CDN -->
+  <link rel="stylesheet" href="libs/github.min.css">
+  <script src="libs/highlight.min.js"></script>
+  <script src="libs/marked.min.js"></script>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h2>OpenAI Coding Assistant</h2>
+      <div class="settings">
+        <select id="model-select">
+          <option value="gpt-4o">GPT-4o</option>
+          <option value="gpt-4o-mini">GPT-4o-mini</option>
+          <option value="o1">o1</option>
+          <option value="o1-mini">o1-mini</option>
+        </select>
+        <button id="clear-chat">Clear Chat</button>
+      </div>
+    </div>
+    
+    <div class="chat-container" id="chat-container">
+      <!-- Chat messages will be displayed here -->
+    </div>
+    
+    <div class="input-container">
+      <textarea id="user-input" placeholder="Ask a coding question..."></textarea>
+      <button id="send-button">Send</button>
+    </div>
+    
+    <div class="api-status" id="api-status"></div>
+  </div>
+  
+  <script src="sidebar.js"></script>
+</body>
+</html>
