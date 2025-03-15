@@ -1,8 +1,8 @@
 {
     "manifest_version": 3,
-    "name": "OpenAI Coding Assistant",
+    "name": "Coding Assistant",
     "version": "1.0",
-    "description": "A minimal Chrome extension for using OpenAI's API for coding assistance",
+    "description": "A minimal Chrome extension for using LLMs for coding assistance",
     "permissions": ["storage", "sidePanel", "scripting", "activeTab"],
     "action": {
       "default_popup": "popup.html",
