@@ -6,26 +6,26 @@ document.addEventListener('DOMContentLoaded', function () {
   const modelSelect = document.getElementById('model-select');
   const clearChatButton = document.getElementById('clear-chat');
   const apiStatus = document.getElementById('api-status');
-  
+
   // Initialization and check for libraries
   let markedLib = null;
   let highlightJsLib = null;
-  
+
   // Initialize marked library
   function initializeMarked() {
     console.log("Initializing marked library...");
-    
+
     // Check if marked is already available in window
     if (window.marked) {
       console.log("Found marked in window object");
       markedLib = window.marked;
-      
+
       // Configure if the API allows it
       if (typeof markedLib.setOptions === 'function') {
         markedLib.setOptions({
           breaks: true,  // Enable line breaks
           gfm: true,     // Enable GitHub Flavored Markdown
-          highlight: function(code, lang) {
+          highlight: function (code, lang) {
             // Use highlight.js for syntax highlighting if available
             if (highlightJsLib && lang) {
               try {
@@ -45,12 +45,12 @@ document.addEventListener('DOMContentLoaded', function () {
       return true;
     } else {
       console.warn("Marked not found in window object. Trying alternative approach...");
-      
+
       // As a fallback, try to load it manually if it wasn't loaded properly
       try {
         const script = document.createElement('script');
         script.src = 'libs/marked.min.js';
-        script.onload = function() {
+        script.onload = function () {
           console.log("Marked script loaded successfully");
           if (window.marked) {
             markedLib = window.marked;
@@ -58,7 +58,7 @@ document.addEventListener('DOMContentLoaded', function () {
               markedLib.setOptions({
                 breaks: true,
                 gfm: true,
-                highlight: function(code, lang) {
+                highlight: function (code, lang) {
                   if (highlightJsLib && lang) {
                     try {
                       return highlightJsLib.highlight(code, { language: lang }).value;
@@ -76,7 +76,7 @@ document.addEventListener('DOMContentLoaded', function () {
             console.error("Marked still not available after loading");
           }
         };
-        script.onerror = function() {
+        script.onerror = function () {
           console.error("Failed to load marked.min.js from libs folder");
         };
         document.head.appendChild(script);
@@ -87,11 +87,11 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     }
   }
-  
+
   // Initialize highlight.js library
   function initializeHighlightJs() {
     console.log("Initializing highlight.js library...");
-    
+
     // Check if highlight.js is already available
     if (window.hljs) {
       console.log("Found highlight.js in window object");
@@ -99,12 +99,12 @@ document.addEventListener('DOMContentLoaded', function () {
       return true;
     } else {
       console.warn("highlight.js not found in window object. Trying to load it...");
-      
+
       try {
         // Load highlight.js script
         const script = document.createElement('script');
         script.src = 'libs/highlight.min.js';
-        script.onload = function() {
+        script.onload = function () {
           console.log("highlight.js script loaded successfully");
           if (window.hljs) {
             highlightJsLib = window.hljs;
@@ -117,7 +117,7 @@ document.addEventListener('DOMContentLoaded', function () {
             console.error("highlight.js still not available after loading");
           }
         };
-        script.onerror = function() {
+        script.onerror = function () {
           console.error("Failed to load highlight.min.js from libs folder");
         };
         document.head.appendChild(script);
@@ -128,14 +128,14 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     }
   }
-  
+
   // Configure marked with highlighting if both libraries are loaded
   function configureMarkedWithHighlighting() {
     if (markedLib && highlightJsLib && typeof markedLib.setOptions === 'function') {
       markedLib.setOptions({
         breaks: true,
         gfm: true,
-        highlight: function(code, lang) {
+        highlight: function (code, lang) {
           if (lang) {
             try {
               return highlightJsLib.highlight(code, { language: lang }).value;
@@ -150,16 +150,16 @@ document.addEventListener('DOMContentLoaded', function () {
       console.log("Marked configured with highlight.js integration");
     }
   }
-  
+
   // Initialize libraries
   const markedInitialized = initializeMarked();
   const highlightJsInitialized = initializeHighlightJs();
-  
+
   // If both libraries are initialized, configure them to work together
   if (markedInitialized && highlightJsInitialized) {
     configureMarkedWithHighlighting();
   }
-  
+
   // Conversation history
   let conversations = [];
 
@@ -185,7 +185,7 @@ document.addEventListener('DOMContentLoaded', function () {
       userInput.focus();
     }
   }
-  
+
   // Function to load settings
   function loadSettings() {
     chrome.storage.local.get(['openaiApiKey', 'openaiModel', 'conversations'], function (result) {
@@ -197,7 +197,7 @@ document.addEventListener('DOMContentLoaded', function () {
         conversations = result.conversations;
         displayConversation();
       }
-      
+
       // Focus again after loading is complete
       focusUserInput();
     });
@@ -235,17 +235,29 @@ document.addEventListener('DOMContentLoaded', function () {
 
       const model = result.openaiModel || 'gpt-4o';
 
+      const requestBody = {
+        model: model,
+        messages: messages,
+        max_tokens: 4000
+      };
+
+      // Check if the model is a reasoning model (o1, o1-mini, o3, o3-mini)
+      if (/^(o1|o1-mini|o3|o3-mini)$/.test(model)) {
+        // Set a default reasoning effort; adjust as needed
+        requestBody.reasoning_effort = 'medium';
+
+        if (requestBody.hasOwnProperty('max_tokens')) {
+          delete requestBody['max_tokens'];
+        }
+      }
+
       fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${result.openaiApiKey}`
         },
-        body: JSON.stringify({
-          model: model,
-          messages: messages,
-          max_tokens: 2000
-        })
+        body: JSON.stringify(requestBody)
       })
         .then(response => {
           if (!response.ok) {
@@ -278,6 +290,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
 
+
   // Enhanced formatter for code blocks with syntax highlighting
   function formatCodeWithHighlighting(text) {
     // Escape HTML first
@@ -287,9 +300,9 @@ document.addEventListener('DOMContentLoaded', function () {
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&#039;");
-      
+
     // Convert code blocks with language detection
-    html = html.replace(/```(\w*)([\s\S]*?)```/g, function(match, language, code) {
+    html = html.replace(/```(\w*)([\s\S]*?)```/g, function (match, language, code) {
       // Apply syntax highlighting if highlight.js is available
       if (highlightJsLib && language) {
         try {
@@ -302,14 +315,14 @@ document.addEventListener('DOMContentLoaded', function () {
       }
       return `<pre><code class="language-${language || 'plaintext'}">${code}</code></pre>`;
     });
-    
+
     // Convert inline code
     html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
-    
+
     // Convert paragraphs (double line breaks)
     const paragraphs = html.split(/\n\n+/);
     html = paragraphs.map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`).join('');
-    
+
     return html;
   }
 
@@ -322,10 +335,10 @@ document.addEventListener('DOMContentLoaded', function () {
       // First, try to use the marked library if it's available
       if (markedLib && (typeof markedLib.parse === 'function' || typeof markedLib === 'function')) {
         console.log("Using marked library for rendering");
-        
+
         // Pre-process code blocks to preserve formatting
         let processedMessage = message;
-        
+
         if (typeof markedLib.parse === 'function') {
           messageElement.innerHTML = markedLib.parse(processedMessage);
         } else if (typeof markedLib === 'function') {
@@ -368,11 +381,11 @@ document.addEventListener('DOMContentLoaded', function () {
         preElement.style.position = 'relative';
         preElement.style.margin = '16px 0';
         preElement.classList.add('code-block');
-        
+
         // Add language label to code block if available
         const languageClass = Array.from(codeBlock.classList)
           .find(cls => cls.startsWith('language-'));
-        
+
         if (languageClass) {
           const language = languageClass.replace('language-', '');
           if (language && language !== 'plaintext') {
@@ -400,7 +413,7 @@ document.addEventListener('DOMContentLoaded', function () {
           copyButton.textContent = 'Copied!';
           setTimeout(() => copyButton.textContent = 'Copy', 2000);
         });
-        
+
         preElement.appendChild(copyButton);
       }
     });
@@ -457,7 +470,7 @@ document.addEventListener('DOMContentLoaded', function () {
       console.error('Could not copy text: ', err);
     });
   }
-  
+
   // Initial focus
   focusUserInput();
 });

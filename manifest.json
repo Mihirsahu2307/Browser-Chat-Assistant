@@ -1,6 +1,6 @@
 {
     "manifest_version": 3,
-    "name": "Coding Assistant",
+    "name": "Chat Assistant",
     "version": "1.0",
     "description": "A minimal Chrome extension for using LLMs for coding assistance",
     "permissions": ["storage", "sidePanel", "scripting", "activeTab"],
