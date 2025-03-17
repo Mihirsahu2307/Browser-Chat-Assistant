@@ -224,10 +224,12 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   // Function to send to OpenAI API
+  // Function to send to OpenAI API with streaming (SSE) and conditional auto-scroll
   function sendToOpenAI(messages) {
     chrome.storage.local.get(['openaiApiKey', 'openaiModel'], function (result) {
       if (!result.openaiApiKey) {
-        apiStatus.textContent = 'API key not set. Please set your OpenAI API key in the popup.';
+        apiStatus.textContent =
+          'API key not set. Please set your OpenAI API key in the popup.';
         apiStatus.className = 'api-status error';
         removeTypingIndicator();
         return;
@@ -235,17 +237,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
       const model = result.openaiModel || 'gpt-4o';
 
+      // Prepare request body with streaming enabled
       const requestBody = {
         model: model,
         messages: messages,
-        max_tokens: 4000
+        max_tokens: 4000,
+        stream: true // Enable streaming responses
       };
 
-      // Check if the model is a reasoning model (o1, o1-mini, o3, o3-mini)
+      // For reasoning models, adjust the request accordingly
       if (/^(o1|o1-mini|o3|o3-mini)$/.test(model)) {
-        // Set a default reasoning effort; adjust as needed
         requestBody.reasoning_effort = 'medium';
-
         if (requestBody.hasOwnProperty('max_tokens')) {
           delete requestBody['max_tokens'];
         }
@@ -263,23 +265,73 @@ document.addEventListener('DOMContentLoaded', function () {
           if (!response.ok) {
             throw new Error(`API error: ${response.status}`);
           }
-          return response.json();
-        })
-        .then(data => {
-          // Remove typing indicator
-          removeTypingIndicator();
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder('utf-8');
+          let assistantResponse = '';
 
-          // Get the assistant's response
-          const assistantResponse = data.choices[0].message.content;
+          // Create a temporary element for the streaming assistant message
+          const tempMessageElement = document.createElement('div');
+          tempMessageElement.className = 'message assistant-message';
+          chatContainer.appendChild(tempMessageElement);
 
-          // Add assistant response to conversation
-          conversations.push({ role: 'assistant', content: assistantResponse });
+          // Helper: only auto-scroll if user is near the bottom
+          function autoScroll() {
+            const threshold = 50; // pixels from the bottom to consider "near"
+            if (chatContainer.scrollHeight - chatContainer.clientHeight - chatContainer.scrollTop < threshold) {
+              chatContainer.scrollTop = chatContainer.scrollHeight;
+            }
+          }
 
-          // Display the message with formatted code blocks
-          displayMessage(assistantResponse, 'assistant');
-
-          // Save the updated conversation
-          saveConversation();
+          // Recursive function to process the stream chunks
+          function readStream() {
+            return reader.read().then(({ done, value }) => {
+              if (done) {
+                removeTypingIndicator();
+                conversations.push({ role: 'assistant', content: assistantResponse });
+                saveConversation();
+                return;
+              }
+              // Decode the chunk and split into lines
+              const chunk = decoder.decode(value, { stream: true });
+              const lines = chunk.split("\n").filter(line => line.trim() !== "");
+              for (let line of lines) {
+                if (line.startsWith("data: ")) {
+                  const data = line.slice(6).trim();
+                  if (data === "[DONE]") {
+                    removeTypingIndicator();
+                    conversations.push({ role: 'assistant', content: assistantResponse });
+                    saveConversation();
+                    return;
+                  }
+                  try {
+                    // Parse the streamed JSON chunk
+                    const parsed = JSON.parse(data);
+                    const content = parsed.choices[0].delta.content;
+                    if (content) {
+                      assistantResponse += content;
+                      // Render the current assistant response using marked if available,
+                      // otherwise fall back to the custom formatter.
+                      if (markedLib && (typeof markedLib.parse === 'function' || typeof markedLib === 'function')) {
+                        if (typeof markedLib.parse === 'function') {
+                          tempMessageElement.innerHTML = markedLib.parse(assistantResponse);
+                        } else {
+                          tempMessageElement.innerHTML = markedLib(assistantResponse);
+                        }
+                      } else {
+                        tempMessageElement.innerHTML = formatCodeWithHighlighting(assistantResponse);
+                      }
+                      // Only auto-scroll if the user is near the bottom
+                      autoScroll();
+                    }
+                  } catch (e) {
+                    console.error("Error parsing stream data", e);
+                  }
+                }
+              }
+              return readStream();
+            });
+          }
+          return readStream();
         })
         .catch(error => {
           console.error('Error:', error);
